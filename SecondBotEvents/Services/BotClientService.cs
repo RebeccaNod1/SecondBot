@@ -1,4 +1,4 @@
-﻿using OpenMetaverse;
+using OpenMetaverse;
 using OpenMetaverse.Assets;
 using SecondBotEvents.Config;
 using System;
@@ -79,6 +79,13 @@ namespace SecondBotEvents.Services
             {
                 AutoRestartLoginTimer.Stop();
                 AutoRestartLoginTimer = null;
+            }
+            if (client != null && client.Network != null && client.Network.Connected)
+            {
+                LogFormater.Warn("Service stopping - initiating logout");
+                flagLogoutExpected();
+                client.Network.Logout();
+                Thread.Sleep(3000); // Wait for packets to send
             }
             ResetClient();
         }

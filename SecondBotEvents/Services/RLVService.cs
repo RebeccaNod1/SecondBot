@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using Org.BouncyCastle.Asn1.Ocsp;
@@ -242,6 +242,7 @@ namespace SecondBotEvents.Services
         EventsSecondBot instance = null;
         readonly Regex rlv_regex = new(@"(?<behaviour>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)", RegexOptions.Compiled);
         readonly List<RLVRule> rules = [];
+        public List<RLVRule> Rules => rules;
         System.Timers.Timer CleanupTimer;
 
         void StartTimer()

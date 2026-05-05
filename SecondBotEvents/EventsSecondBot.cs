@@ -1,4 +1,4 @@
-﻿using SecondBotEvents.Services;
+using SecondBotEvents.Services;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -16,6 +16,12 @@ namespace SecondBotEvents
 #endif
                 LogFormater.Info("Welcome to Secondbot [Events build] version: " + AssemblyInfo.GetGitHash());
                 EventsSecondBot worker = new(args);
+                
+                AppDomain.CurrentDomain.ProcessExit += (s, e) => {
+                    LogFormater.Warn("SIGTERM received, initiating graceful shutdown...");
+                    worker.StopServices();
+                    Thread.Sleep(2000);
+                };
 
                 while (worker.Exit() == false)
                 {

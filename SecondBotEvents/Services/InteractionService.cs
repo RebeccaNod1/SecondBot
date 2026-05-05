@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using OpenMetaverse;
 using SecondBotEvents.Config;
 using System;
@@ -233,10 +233,13 @@ namespace SecondBotEvents.Services
             Dictionary<string, string> reply = new()
             {
                 { "message", e.Message },
-                { "fromuuid", e.AgentID.ToString() }
+                { "fromuuid", e.AgentID.ToString() },
+                { "groupuuid", e.GroupID.ToString() }
             };
             if (ProcessRequest(myConfig.GetAcceptGroupInvites(),myConfig.GetGroupInviteLevel(), e.FromName, "GroupInvite", e.AgentID, reply) == false)
             {
+                // Not auto-accepted, record for dashboard
+                master.DataStoreService.AddPendingGroupInvite(e.GroupID, e.AgentID, e.FromName, e.Message);
                 return;
             }
             e.Accept = true;

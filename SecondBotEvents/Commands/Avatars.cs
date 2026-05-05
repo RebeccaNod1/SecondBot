@@ -78,25 +78,73 @@ namespace SecondBotEvents.Commands
                 return BasicReply("Error not in a sim");
             }
             List<NearMeDetails> BetterNearMe = [];
-            List<Avatar> avcopy = [.. GetClient().Network.CurrentSim.ObjectsAvatars.Values];
-            foreach (Avatar av in avcopy)
+            
+            Utils.LongToUInts(GetClient().Network.CurrentSim.Handle, out uint mySimX, out uint mySimY);
+            Vector3 myGlobalPos = new Vector3(mySimX + GetClient().Self.SimPosition.X, mySimY + GetClient().Self.SimPosition.Y, GetClient().Self.SimPosition.Z);
+
+            foreach (var sim in GetClient().Network.Simulators)
             {
-                if (av.ID != GetClient().Self.AgentID)
+                Utils.LongToUInts(sim.Handle, out uint simX, out uint simY);
+                HashSet<UUID> processedAvatars = [];
+
+                List<Avatar> avcopy = [.. sim.ObjectsAvatars.Values];
+                foreach (Avatar av in avcopy)
                 {
-                    Vector3 globalPos = av.Position;
-                    if (av.ParentID != 0 && GetClient().Network.CurrentSim.ObjectsPrimitives.TryGetValue(av.ParentID, out Primitive parentObj))
+                    if (av.ID == GetClient().Self.AgentID) continue;
+                    
+                    processedAvatars.Add(av.ID);
+
+                    Vector3 localPos = av.Position;
+                    if (av.ParentID != 0 && sim.ObjectsPrimitives.TryGetValue(av.ParentID, out Primitive parentObj))
                     {
-                        globalPos = parentObj.Position + (av.Position * parentObj.Rotation);
+                        localPos = parentObj.Position + (av.Position * parentObj.Rotation);
                     }
+
+                    Vector3 globalPos = new Vector3(simX + localPos.X, simY + localPos.Y, localPos.Z);
+                    double dist = Math.Round(Vector3.Distance(globalPos, myGlobalPos), 2);
+
+                    if (dist > 150) continue;
+
+                    float relX = (simX - mySimX) + localPos.X;
+                    float relY = (simY - mySimY) + localPos.Y;
 
                     NearMeDetails details = new()
                     {
                         id = av.ID.ToString(),
                         name = av.Name,
-                        x = (int)Math.Round(globalPos.X),
-                        y = (int)Math.Round(globalPos.Y),
+                        x = (int)Math.Round(relX),
+                        y = (int)Math.Round(relY),
                         z = (int)Math.Round(globalPos.Z),
-                        range = Math.Round(Vector3.Distance(globalPos, GetClient().Self.SimPosition), 2)
+                        range = dist
+                    };
+                    BetterNearMe.Add(details);
+                }
+
+                foreach (var kvp in sim.AvatarPositions)
+                {
+                    UUID avID = kvp.Key;
+                    if (avID == GetClient().Self.AgentID || processedAvatars.Contains(avID)) continue;
+
+                    Vector3 localPos = kvp.Value;
+                    Vector3 globalPos = new Vector3(simX + localPos.X, simY + localPos.Y, localPos.Z);
+                    double dist = Math.Round(Vector3.Distance(globalPos, myGlobalPos), 2);
+
+                    if (dist > 150) continue;
+
+                    float relX = (simX - mySimX) + localPos.X;
+                    float relY = (simY - mySimY) + localPos.Y;
+
+                    string avName = master.DataStoreService.GetAvatarName(avID);
+                    if (avName == "lookup" || string.IsNullOrEmpty(avName)) avName = "Unknown";
+
+                    NearMeDetails details = new()
+                    {
+                        id = avID.ToString(),
+                        name = avName,
+                        x = (int)Math.Round(relX),
+                        y = (int)Math.Round(relY),
+                        z = (int)Math.Round(globalPos.Z),
+                        range = dist
                     };
                     BetterNearMe.Add(details);
                 }

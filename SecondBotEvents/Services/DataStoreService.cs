@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using OpenMetaverse;
 using SecondBotEvents.Config;
 using System;
@@ -15,6 +15,16 @@ using Swan;
 
 namespace SecondBotEvents.Services
 {
+    public class GroupInvite
+    {
+        public UUID GroupID { get; set; }
+        public string GroupName { get; set; }
+        public UUID AgentID { get; set; }
+        public string AgentName { get; set; }
+        public UUID RoleID { get; set; }
+        public string Message { get; set; }
+    }
+
     public class DataStoreService : BotServices
     {
         protected new DataStoreConfig myConfig;
@@ -46,6 +56,7 @@ namespace SecondBotEvents.Services
         protected Dictionary<string, long> KeyValueStoreLastUsed = [];
 
         protected List<CommandHistory> commandHistories = [];
+        protected List<GroupInvite> PendingGroupInvites = [];
 
 
 
@@ -469,11 +480,11 @@ namespace SecondBotEvents.Services
         {
             RecordChat(sessionid, "Bot", message);
         }
-        public void BotRecordLocalchatReply(string message)
+        public void BotRecordLocalchatReply(string message, string typeTag = "")
         {
             lock (localChatHistory)
             {
-                localChatHistory.Add("{BOT} " + GetClient().Self.Name + ": " + message);
+                localChatHistory.Add("{BOT} " + typeTag + GetClient().Self.Name + ": " + message);
                 if (localChatHistory.Count <= myConfig.GetLocalChatHistoryLimit())
                 {
                     return;
@@ -597,6 +608,42 @@ namespace SecondBotEvents.Services
         public bool KnownAvatar(string name)
         {
             return KnownAvatar(name, UUID.Zero);
+        }
+
+        public void AddPendingGroupInvite(UUID groupID, UUID agentID, string agentName, string message)
+        {
+            lock (PendingGroupInvites)
+            {
+                // Avoid duplicates
+                if (PendingGroupInvites.Any(i => i.GroupID == groupID))
+                {
+                    return;
+                }
+                PendingGroupInvites.Add(new GroupInvite
+                {
+                    GroupID = groupID,
+                    GroupName = "Unknown Group", // Will be updated on lookup
+                    AgentID = agentID,
+                    AgentName = agentName,
+                    Message = message
+                });
+            }
+        }
+
+        public List<GroupInvite> GetPendingGroupInvites()
+        {
+            lock (PendingGroupInvites)
+            {
+                return [.. PendingGroupInvites];
+            }
+        }
+
+        public void RemovePendingGroupInvite(UUID groupID)
+        {
+            lock (PendingGroupInvites)
+            {
+                PendingGroupInvites.RemoveAll(i => i.GroupID == groupID);
+            }
         }
 
 
@@ -1135,6 +1182,8 @@ namespace SecondBotEvents.Services
                 case ChatType.Whisper:
                 case ChatType.Normal:
                 case ChatType.Shout:
+                case ChatType.OwnerSay:
+                case ChatType.RegionSayTo:
                     {
                         if (hard_blocked_agents.Contains(e.FromName.ToLowerInvariant()) == true)
                         {
@@ -1144,7 +1193,11 @@ namespace SecondBotEvents.Services
                         {
                             break;
                         }
-                            string source = "{Av}";
+                        if (string.IsNullOrWhiteSpace(e.Message))
+                        {
+                            break;
+                        }
+                        string source = "{Av}";
                         if (e.SourceType == ChatSourceType.Object)
                         {
                             source = "{Obj}";
@@ -1153,6 +1206,13 @@ namespace SecondBotEvents.Services
                         {
                             source = "{Sys}";
                         }
+                        
+                        string typeTag = "";
+                        if (e.Type == ChatType.Shout) typeTag = "[Shout] ";
+                        else if (e.Type == ChatType.Whisper) typeTag = "[Whisper] ";
+                        else if (e.Type == ChatType.OwnerSay) typeTag = "[OwnerSay] ";
+                        else if (e.Type == ChatType.RegionSayTo) typeTag = "[RegionSayTo] ";
+
                         lock (localChatHistory)
                         {
                             if (source == "{Av}")
@@ -1160,7 +1220,7 @@ namespace SecondBotEvents.Services
                                 AddAvatar(e.SourceID, e.FromName);
                             }
 
-                            localChatHistory.Add(source+ " "+e.FromName + ": " + e.Message);
+                            localChatHistory.Add(source + " " + typeTag + e.FromName + ": " + e.Message);
                             if (localChatHistory.Count <= myConfig.GetLocalChatHistoryLimit())
                             {
                                 break;

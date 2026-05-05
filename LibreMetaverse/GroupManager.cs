@@ -914,7 +914,7 @@ namespace OpenMetaverse
         {
             if (m_GroupInvitation == null || e.IM.Dialog != InstantMessageDialog.GroupInvitation) return;
 
-            GroupInvitationEventArgs args = new GroupInvitationEventArgs(e.Simulator, e.IM.FromAgentID, e.IM.FromAgentName, e.IM.Message);
+            GroupInvitationEventArgs args = new GroupInvitationEventArgs(e.Simulator, e.IM.FromAgentID, e.IM.FromAgentName, e.IM.Message, e.IM.IMSessionID);
             OnGroupInvitation(args);
 
             if (args.Accept)
@@ -2460,15 +2460,19 @@ namespace OpenMetaverse
         /// <summary>The Simulator</summary>
         public Simulator Simulator { get; }
 
+        /// <summary>The Group ID</summary>
+        public UUID GroupID { get; }
+
         /// <summary>Set to true to accept invitation, false to decline</summary>
         public bool Accept { get; set; }
 
-        public GroupInvitationEventArgs(Simulator simulator, UUID agentID, string agentName, string message)
+        public GroupInvitationEventArgs(Simulator simulator, UUID agentID, string agentName, string message, UUID groupID)
         {
             Simulator = simulator;
             AgentID = agentID;
             FromName = agentName;
             Message = message;
+            GroupID = groupID;
         }
     }
 

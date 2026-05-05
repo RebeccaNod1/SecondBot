@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using OpenMetaverse;
 using SecondBotEvents.Services;
 using System;
@@ -159,6 +159,19 @@ namespace SecondBotEvents.Commands
                 { "z", (int)Math.Round(GetClient().Self.SimPosition.Z) }
             };
             return BasicReply(JsonSerializer.Serialize(pos, JsonOptions.UnsafeRelaxed));
+        }
+        [About("Fetchs the current RLV restrictions applied to the bot")]
+        [ReturnHints("A JSON array of RLV rules")]
+        [CmdTypeGet()]
+        public object RLVStatus()
+        {
+            if (master.RLV == null)
+            {
+                return Failure("RLV service is not running");
+            }
+            var rules = master.RLV.Rules;
+            if (rules == null) return BasicReply("[]");
+            return BasicReply(JsonSerializer.Serialize(rules, JsonOptions.UnsafeRelaxed));
         }
     }
 

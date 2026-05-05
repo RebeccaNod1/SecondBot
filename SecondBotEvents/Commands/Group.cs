@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using OpenMetaverse;
 using SecondBotEvents.Services;
 using System.Collections.Generic;
@@ -443,6 +443,32 @@ namespace SecondBotEvents.Commands
             GetClient().Self.InstantMessageGroup(groupUUID, message);
             master.DataStoreService.BotRecordReplyIM(groupUUID, message);
             return BasicReply("Sending");
+        }
+        [About("fetchs a list of all pending group invitations")]
+        [ReturnHints("array of GroupInvite objects")]
+        [CmdTypeGet()]
+        public object GetPendingGroupInvites()
+        {
+            return BasicReply(JsonSerializer.Serialize(master.DataStoreService.GetPendingGroupInvites(), JsonOptions.UnsafeRelaxed));
+        }
+
+        [About("Responds to a group invitation")]
+        [ArgHints("group", "the group UUID to respond to", "UUID")]
+        [ArgHints("accept", "true to join, false to decline", "BOOL")]
+        [CmdTypeDo()]
+        public object GroupInviteRespond(string group, string accept)
+        {
+            if (UUID.TryParse(group, out UUID groupuuid) == false)
+            {
+                return Failure("Invaild group UUID", [group, accept]);
+            }
+            bool doAccept = accept.ToLower() == "true";
+            if (doAccept == true)
+            {
+                GetClient().Groups.RequestJoinGroup(groupuuid);
+            }
+            master.DataStoreService.RemovePendingGroupInvite(groupuuid);
+            return BasicReply("Done");
         }
     }
 }
