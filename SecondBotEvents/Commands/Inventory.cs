@@ -485,7 +485,7 @@ namespace SecondBotEvents.Commands
                 return Failure("invaild item uuid", [item]);
             }
             InventoryItem realitem = HelperInventory.getItemByInventoryUUID(GetClient(), itemuuid);
-            GetClient().Appearance.AddAttachments([realitem], false, false);
+            master.CurrentOutfitFolder.Attach(realitem, AttachmentPoint.Default, false);
             return BasicReply("Ok", [item]);
         }
 
@@ -520,7 +520,7 @@ namespace SecondBotEvents.Commands
             }
 
             InventoryItem realitem = HelperInventory.getItemByInventoryUUID(GetClient(), itemuuid);
-            GetClient().Appearance.RemoveFromOutfit(realitem);
+            master.CurrentOutfitFolder.RemoveFromOutfit(realitem);
             return BasicReply("Ok", [item]);
         }
 
