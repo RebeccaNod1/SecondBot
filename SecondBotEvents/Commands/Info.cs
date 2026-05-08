@@ -33,7 +33,8 @@ namespace SecondBotEvents.Commands
             ProcessAvatar(avatar);
             if (avataruuid == UUID.Zero) return Failure("Unknown avatar");
             bool ok = master.DataStoreService.VerifyLoginToken(avataruuid, token);
-            return BasicReply(ok.ToString());
+            if (ok) return BasicReply(avataruuid.ToString());
+            return BasicReply("False");
         }
 
         [About("Fetchs the current region type the bot is in")]

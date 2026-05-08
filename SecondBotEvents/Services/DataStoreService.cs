@@ -1316,16 +1316,20 @@ namespace SecondBotEvents.Services
                         {
                             break;
                         }
-                        if (e.SourceID == GetClient().Self.AgentID)
+                        /* if (e.SourceID == GetClient().Self.AgentID)
                         {
                             break;
-                        }
+                        } */
                         if (string.IsNullOrWhiteSpace(e.Message))
                         {
                             break;
                         }
                         string source = "{Av}";
-                        if (e.SourceType == ChatSourceType.Object)
+                        if (e.SourceID == GetClient().Self.AgentID)
+                        {
+                            source = "{BOT}";
+                        }
+                        else if (e.SourceType == ChatSourceType.Object)
                         {
                             source = "{Obj}";
                         }
