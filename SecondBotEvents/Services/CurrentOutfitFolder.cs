@@ -1,4 +1,4 @@
-﻿using OpenMetaverse;
+using OpenMetaverse;
 using SecondBotEvents.Config;
 using System;
 using System.Collections.Generic;
@@ -520,6 +520,13 @@ namespace SecondBotEvents.Services
             foreach (var item in newItems)
             {
                 AddLink(item);
+            }
+
+            // Detach all current non-body-part items first to avoid toggling
+            var currentWorn = ContentLinks().Select(RealInventoryItem).Where(i => !IsBodyPart(i)).ToList();
+            if (currentWorn.Count > 0)
+            {
+                GetClient().Appearance.RemoveFromOutfit(currentWorn);
             }
 
             GetClient().Appearance.ReplaceOutfit(outfit, false);
