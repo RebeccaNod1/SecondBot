@@ -1,4 +1,4 @@
-﻿using OpenMetaverse;
+using OpenMetaverse;
 using SecondBotEvents.Services;
 using System.Text.Json;
 using System.Collections.Generic;
@@ -128,6 +128,56 @@ namespace SecondBotEvents.Commands
             GetClient().Friends.OfferFriendship(avataruuid);
             return BasicReply("Request sent", [avatar, state]);
             
+        }
+
+        [About("Gets the pending friend requests")]
+        [ReturnHints("array of FriendRequest")]
+        [CmdTypeGet()]
+        public object FriendsPendingRequests()
+        {
+            List<FriendRequest> requests = master.DataStoreService.GetPendingFriendRequests();
+            return BasicReply(JsonSerializer.Serialize(requests, JsonOptions.UnsafeRelaxed));
+        }
+
+        [About("Responds to a friend request")]
+        [ArgHints("avatar", "Who to respond to","AVATAR")]
+        [ArgHints("accept", "true: Accept, false: Decline","BOOL")]
+        [ReturnHints("accepted")]
+        [ReturnHints("declined")]
+        [ReturnHintsFailure("avatar lookup")]
+        [ReturnHintsFailure("no pending request")]
+        [ReturnHintsFailure("state invaild")]
+        [CmdTypeDo()]
+        public object FriendRequestRespond(string avatar, string accept)
+        {
+            ProcessAvatar(avatar);
+            if (avataruuid == UUID.Zero)
+            {
+                return Failure("avatar lookup", [avatar, accept]);
+            }
+            if (bool.TryParse(accept, out bool status) == false)
+            {
+                return Failure("state invaild", [avatar, accept]);
+            }
+            List<FriendRequest> requests = master.DataStoreService.GetPendingFriendRequests();
+            FriendRequest request = requests.FirstOrDefault(r => r.AgentID == avataruuid);
+            if (request == null)
+            {
+                return Failure("no pending request", [avatar, accept]);
+            }
+
+            if (status == true)
+            {
+                GetClient().Friends.AcceptFriendship(avataruuid, request.SessionID);
+                master.DataStoreService.RemovePendingFriendRequest(avataruuid);
+                return BasicReply("accepted", [avatar, accept]);
+            }
+            else
+            {
+                GetClient().Friends.DeclineFriendship(avataruuid, request.SessionID);
+                master.DataStoreService.RemovePendingFriendRequest(avataruuid);
+                return BasicReply("declined", [avatar, accept]);
+            }
         }
     }
 

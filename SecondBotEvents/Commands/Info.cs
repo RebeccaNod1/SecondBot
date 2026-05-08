@@ -4,12 +4,38 @@ using SecondBotEvents.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace SecondBotEvents.Commands
 {
     [ClassInfo("What is going on with the bot")]
     public class Info(EventsSecondBot setmaster) : CommandsAPI(setmaster)
     {
+        [About("Requests a 6-digit login token to be sent via IM to the avatar")]
+        [ArgHints("avatar", "The avatar to send the token to", "AVATAR")]
+        [CmdTypeDo()]
+        public object RequestLoginToken(string avatar)
+        {
+            ProcessAvatar(avatar);
+            if (avataruuid == UUID.Zero) return Failure("Unknown avatar - are you sure the name is correct? (Firstname Lastname)");
+            
+            string token = master.DataStoreService.RequestLoginToken(avataruuid);
+            GetClient().Self.InstantMessage(avataruuid, $"[Bot Dashboard] Your login verification code is: {token} (Expires in 5 minutes)");
+            return BasicReply("Sent");
+        }
+
+        [About("Verifies a 6-digit login token")]
+        [ArgHints("avatar", "The avatar verifying", "AVATAR")]
+        [ArgHints("token", "The 6-digit token", "STRING")]
+        [CmdTypeGet()]
+        public object VerifyLoginToken(string avatar, string token)
+        {
+            ProcessAvatar(avatar);
+            if (avataruuid == UUID.Zero) return Failure("Unknown avatar");
+            bool ok = master.DataStoreService.VerifyLoginToken(avataruuid, token);
+            return BasicReply(ok.ToString());
+        }
+
         [About("Fetchs the current region type the bot is in")]
         [ReturnHints("Region type as string")]
         [ReturnHintsFailure("Error not in a sim")]

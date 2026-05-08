@@ -1,4 +1,4 @@
-﻿using EmbedIO;
+using EmbedIO;
 using EmbedIO.Actions;
 using EmbedIO.Routing;
 using EmbedIO.Utilities;
@@ -173,6 +173,7 @@ namespace SecondBotEvents.Services
     {
         protected EventsSecondBot master = setmaster;
         protected UUID avataruuid = UUID.Zero;
+        protected string avatarname = "";
         protected Parcel targetparcel = null;
 
         protected GridClient GetClient()
@@ -204,20 +205,54 @@ namespace SecondBotEvents.Services
         {
             if (UUID.TryParse(avatar, out avataruuid) == true)
             {
-                // sent a UUID not  a name, thats fine
-                // try and load the name anyway
-                master.DataStoreService.GetAvatarName(avataruuid);
+                avatarname = master.DataStoreService.GetAvatarName(avataruuid);
                 return;
             }
-            avataruuid = UUID.Zero;
-            string UUIDfetch = master.DataStoreService.GetAvatarUUID(avatar);
-            if (UUIDfetch != "lookup")
+            
+            avatarname = avatar;
+            string UUIDfetch = master.DataStoreService.GetAvatarUUID(avatarname);
+            if (UUID.TryParse(UUIDfetch, out avataruuid) == false)
             {
-                if(UUID.TryParse(UUIDfetch, out avataruuid) == false)
-                {
-                    avataruuid = UUID.Zero;
-                }
+                avataruuid = UUID.Zero;
             }
+            
+            if (avataruuid == UUID.Zero)
+            {
+                avataruuid = ResolveAvatarUUID(avatarname);
+            }
+        }
+
+        protected UUID ResolveAvatarUUID(string avatar)
+        {
+            if (UUID.TryParse(avatar, out UUID result) == true) return result;
+
+            AutoResetEvent resolved = new(false);
+            UUID queryID = UUID.Random();
+            UUID resolvedUUID = UUID.Zero;
+            EventHandler<AvatarPickerReplyEventArgs> callback = (sender, e) => {
+                if (e.QueryID == queryID)
+                {
+                    foreach (var kvp in e.Avatars)
+                    {
+                        if (kvp.Value.Equals(avatar, StringComparison.OrdinalIgnoreCase))
+                        {
+                            resolvedUUID = kvp.Key;
+                            break;
+                        }
+                    }
+                    if (resolvedUUID == UUID.Zero && e.Avatars.Count > 0)
+                    {
+                        foreach (var kvp in e.Avatars) { resolvedUUID = kvp.Key; break; }
+                    }
+                    resolved.Set();
+                }
+            };
+
+            GetClient().Avatars.AvatarPickerReply += callback;
+            GetClient().Avatars.RequestAvatarNameSearch(avatar, queryID);
+            resolved.WaitOne(5000);
+            GetClient().Avatars.AvatarPickerReply -= callback;
+            return resolvedUUID;
         }
 
         protected object BasicReply(string input)

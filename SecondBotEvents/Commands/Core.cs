@@ -12,6 +12,14 @@ namespace SecondBotEvents.Commands
         {
             return BasicReply("world");
         }
+
+        [About("Returns the bot's Second Life name")]
+        [ReturnHints("Bot Name")]
+        [CmdTypeGet()]
+        public object GetBotName()
+        {
+            return BasicReply(GetClient().Self.Name);
+        }
     }
 
     public class CommandLibCall

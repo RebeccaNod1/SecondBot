@@ -216,6 +216,27 @@ namespace SecondBotEvents.Commands
             }
             return BasicReply(reply.Value.AboutText.ToString());
         }
+        
+        [About("Requests the given avatars profile picks")]
+        [ReturnHints("JSON array of picks")]
+        [ReturnHintsFailure("Invaild avatar uuid")]
+        [ReturnHints("Requesting avatar details  [Retry later]")]
+        [ArgHints("avatar", "Who are we getting the profile picks of", "AVATAR")]
+        [CmdTypeGet()]
+        public object GetAvatarPicks(string avatar)
+        {
+            ProcessAvatar(avatar);
+            if (avataruuid == UUID.Zero)
+            {
+                return Failure("Invaild avatar uuid", [avatar]);
+            }
+            KeyValuePair<bool, Dictionary<UUID, string>> reply = master.DataStoreService.GetAvatarPicks(avataruuid);
+            if (reply.Key == false)
+            {
+                return Failure("Requesting avatar details  [Retry later]", [avatar]);
+            }
+            return BasicReply(JsonSerializer.Serialize(reply.Value, JsonOptions.UnsafeRelaxed));
+        }
 
         [About("Requests the given avatars display name")]
         [ReturnHints("display name if set or ?")]

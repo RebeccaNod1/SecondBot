@@ -27,6 +27,20 @@ namespace SecondBotEvents.Commands
             return BasicReply(master.DataStoreService.IsGroupMember(groupuuid, avataruuid).ToString());
         }
 
+        [About("Gets the rank of an avatar in a group (Guest, Member, Officer, Owner)")]
+        [ArgHints("group", "the group to check", "UUID")]
+        [ArgHints("avatar", "the avatar to check", "AVATAR")]
+        [CmdTypeGet()]
+        public object GetAvatarGroupRank(string group, string avatar)
+        {
+            if (UUID.TryParse(group, out UUID groupuuid) == false)
+            {
+                return Failure("Invaild group UUID", [group, avatar]);
+            }
+            ProcessAvatar(avatar);
+            return BasicReply(master.DataStoreService.GetGroupMemberRank(groupuuid, avataruuid));
+        }
+
         [About("Gets membership of a group")]
         [ReturnHints("list of UUIDS of group members")]
         [ReturnHintsFailure("Updating")]

@@ -25,6 +25,14 @@ namespace SecondBotEvents.Services
         public string Message { get; set; }
     }
 
+    public class FriendRequest
+    {
+        public UUID AgentID { get; set; }
+        public string AgentName { get; set; }
+        public UUID SessionID { get; set; }
+        public string Message { get; set; }
+    }
+
     public class DataStoreService : BotServices
     {
         protected new DataStoreConfig myConfig;
@@ -42,8 +50,9 @@ namespace SecondBotEvents.Services
 
         protected Dictionary<UUID, string> groupsKey2Name = [];
 
-        protected Dictionary<UUID, List<UUID>> groupMembers = [];
+        protected Dictionary<UUID, Dictionary<UUID, GroupMember>> groupMembers = [];
         protected Dictionary<UUID, Dictionary<UUID, GroupRole>> groupRoles = [];
+        protected Dictionary<UUID, KeyValuePair<string, long>> loginTokens = []; // Avatar -> {Token, Expiry}
 
         protected List<string> localChatHistory = [];
 
@@ -57,6 +66,7 @@ namespace SecondBotEvents.Services
 
         protected List<CommandHistory> commandHistories = [];
         protected List<GroupInvite> PendingGroupInvites = [];
+        protected List<FriendRequest> PendingFriendRequests = [];
 
 
 
@@ -393,6 +403,59 @@ namespace SecondBotEvents.Services
             }
         }
 
+        public string GetGroupMemberRank(UUID group, UUID avatar)
+        {
+            lock (groupMembers)
+            {
+                if (groupMembers.ContainsKey(group) == false || groupMembers[group].ContainsKey(avatar) == false)
+                {
+                    LogFormater.Info($"[DEBUG] GetGroupMemberRank: Returning Guest. GroupKnown: {groupMembers.ContainsKey(group)}, AvatarKnown: {(groupMembers.ContainsKey(group) ? groupMembers[group].ContainsKey(avatar).ToString() : "N/A")} for Group: {group}, Avatar: {avatar}");
+                    return "Guest";
+                }
+                GroupMember m = groupMembers[group][avatar];
+                if (m.IsOwner == true) return "Owner";
+                if (m.Title != null && (m.Title.Contains("Officer") || m.Title.Contains("Officer"))) return "Officer";
+                
+                // Also check roles if title didn't match
+                if (groupRoles.ContainsKey(group))
+                {
+                    // This is a bit complex as we need member-to-role mapping which we don't have cached yet
+                    // For now, Owner and Title check is a good start.
+                }
+                return "Member";
+            }
+        }
+
+        public string RequestLoginToken(UUID avatar)
+        {
+            string token = _delayRandom.Next(100000, 999999).ToString();
+            long expiry = SecondbotHelpers.UnixTimeNow() + 300; // 5 mins
+            lock (loginTokens)
+            {
+                loginTokens[avatar] = new KeyValuePair<string, long>(token, expiry);
+            }
+            return token;
+        }
+
+        public bool VerifyLoginToken(UUID avatar, string token)
+        {
+            lock (loginTokens)
+            {
+                if (loginTokens.ContainsKey(avatar) == false) return false;
+                if (loginTokens[avatar].Value < SecondbotHelpers.UnixTimeNow())
+                {
+                    loginTokens.Remove(avatar);
+                    return false;
+                }
+                if (loginTokens[avatar].Key == token)
+                {
+                    loginTokens.Remove(avatar);
+                    return true;
+                }
+                return false;
+            }
+        }
+
         public Dictionary<UUID, string> GetGroupRoles(UUID group)
         {
             Dictionary<UUID, string> reply = [];
@@ -432,9 +495,9 @@ namespace SecondBotEvents.Services
             {
                 if (groupMembers.ContainsKey(group) == false)
                 {
-                    groupMembers.Add(group, []);
+                    groupMembers.Add(group, new Dictionary<UUID, GroupMember>());
                 }
-                if (groupMembers[group].Contains(avatar) == false)
+                if (groupMembers[group].ContainsKey(avatar) == false)
                 {
                     reply = false;
                     AutoResetEvent fetchEvent = new(false);
@@ -470,10 +533,10 @@ namespace SecondBotEvents.Services
             {
                 if (groupMembers.ContainsKey(Group) == false)
                 {
-                    groupMembers.Add(Group, []);
+                    groupMembers.Add(Group, new Dictionary<UUID, GroupMember>());
                 }
+                return groupMembers[Group].Keys.ToList();
             }
-            return groupMembers[Group];
         }
 
         public void BotRecordReplyIM(UUID sessionid,string message)
@@ -643,6 +706,41 @@ namespace SecondBotEvents.Services
             lock (PendingGroupInvites)
             {
                 PendingGroupInvites.RemoveAll(i => i.GroupID == groupID);
+            }
+        }
+
+        public void AddPendingFriendRequest(UUID agentID, string agentName, UUID sessionID, string message)
+        {
+            lock (PendingFriendRequests)
+            {
+                // Avoid duplicates
+                if (PendingFriendRequests.Any(r => r.AgentID == agentID))
+                {
+                    return;
+                }
+                PendingFriendRequests.Add(new FriendRequest
+                {
+                    AgentID = agentID,
+                    AgentName = agentName,
+                    SessionID = sessionID,
+                    Message = message
+                });
+            }
+        }
+
+        public List<FriendRequest> GetPendingFriendRequests()
+        {
+            lock (PendingFriendRequests)
+            {
+                return [.. PendingFriendRequests];
+            }
+        }
+
+        public void RemovePendingFriendRequest(UUID agentID)
+        {
+            lock (PendingFriendRequests)
+            {
+                PendingFriendRequests.RemoveAll(r => r.AgentID == agentID);
             }
         }
 
@@ -967,14 +1065,18 @@ namespace SecondBotEvents.Services
         {
             lock (groupMembers)
             {
-                if (groupMembers.ContainsKey(e.GroupID) == true)
+                if (groupMembers.ContainsKey(e.GroupID) == false)
                 {
-                    groupMembers.Remove(e.GroupID);
+                    groupMembers.Add(e.GroupID, new Dictionary<UUID, GroupMember>());
                 }
-                groupMembers.Add(e.GroupID, []);
+                else
+                {
+                    groupMembers[e.GroupID].Clear();
+                }
+
                 foreach (KeyValuePair<UUID, GroupMember> a in e.Members)
                 {
-                    groupMembers[e.GroupID].Add(a.Value.ID);
+                    groupMembers[e.GroupID][a.Key] = a.Value;
                 }
             }
         }
@@ -1053,6 +1155,30 @@ namespace SecondBotEvents.Services
         }
 
         Dictionary<UUID, Avatar.AvatarProperties> avprops = [];
+        Dictionary<UUID, Dictionary<UUID, string>> avpicks = [];
+
+        public KeyValuePair<bool, Dictionary<UUID, string>> GetAvatarPicks(UUID agentID)
+        {
+            if (avpicks.ContainsKey(agentID) == false)
+            {
+                GetClient().Avatars.RequestAvatarPicks(agentID);
+                return new KeyValuePair<bool, Dictionary<UUID, string>>(false, []);
+            }
+            return new KeyValuePair<bool, Dictionary<UUID, string>>(true, avpicks[agentID]);
+        }
+
+        protected void AvatarPicksReply(object sender, AvatarPicksReplyEventArgs e)
+        {
+            lock (avpicks)
+            {
+                if (avpicks.ContainsKey(e.AvatarID) == false)
+                {
+                    avpicks.Add(e.AvatarID, []);
+                }
+                avpicks[e.AvatarID] = e.Picks;
+            }
+        }
+
         public KeyValuePair<bool,Avatar.AvatarProperties> GetAvatarAvatarProperties(UUID agentID)
         {
             if (avprops.ContainsKey(agentID) == false)
@@ -1087,6 +1213,7 @@ namespace SecondBotEvents.Services
             GetClient().Estate.EstateBansReply += EstateBans;
             GetClient().Friends.FriendFoundReply += FindFriendReply;
             GetClient().Avatars.AvatarPropertiesReply += AvatarDetailsReply;
+            GetClient().Avatars.AvatarPicksReply += AvatarPicksReply;
             GetClient().Groups.RequestCurrentGroups();
             _ = GetClient().Self.RetrieveInstantMessages();
             if(myConfig.GetPrefetchInventory() == true)
@@ -1393,6 +1520,12 @@ namespace SecondBotEvents.Services
                         {
                             RecordChat(SessionID, e.IM.FromAgentName, e.IM.Message);
                         }
+                        break;
+                    }
+                case InstantMessageDialog.FriendshipOffered:
+                    {
+                        AddAvatar(e.IM.FromAgentID, e.IM.FromAgentName);
+                        AddPendingFriendRequest(e.IM.FromAgentID, e.IM.FromAgentName, e.IM.IMSessionID, e.IM.Message);
                         break;
                     }
                 default:
