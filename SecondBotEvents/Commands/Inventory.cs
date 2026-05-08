@@ -1,4 +1,4 @@
-﻿using BetterSecondBot.Static;
+using BetterSecondBot.Static;
 using System.Text.Json;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
@@ -1100,7 +1100,7 @@ namespace SecondBotEvents.Commands
         }
 
 
-        [About("Requests the mapped inventory on the bot using catched data only")]
+        [About("Requests theMapped inventory on the bot using catched data only")]
         [ReturnHints("a json data object with: " +
             "{" +
             "   Name: String<br/>"+
@@ -1113,6 +1113,48 @@ namespace SecondBotEvents.Commands
         {
             InventoryNodeEntry root = LoadInventoryNode(GetClient().Inventory.Store.RootFolder.UUID,"My Inventory");
             return BasicReply(JsonSerializer.Serialize(root, JsonOptions.UnsafeRelaxed));
+        }
+
+        [About("Requests a list of all worn item UUIDs")]
+        [ReturnHints("List of UUID strings")]
+        [CmdTypeGet()]
+        public object GetWornItems()
+        {
+            List<string> worn = [];
+            var links = master.CurrentOutfitFolder.ContentLinks();
+            foreach (var link in links)
+            {
+                worn.Add(link.AssetUUID.ToString());
+            }
+            return BasicReply(JsonSerializer.Serialize(worn, JsonOptions.UnsafeRelaxed));
+        }
+
+        [About("Adds the contents of the given folder to the current outfit")]
+        [ArgHints("folder", "UUID of folder", "UUID")]
+        [CmdTypeDo()]
+        public object AddOutfit(string folder)
+        {
+            if (UUID.TryParse(folder, out UUID folderUUID) == false) return Failure("invaild folder uuid", [folder]);
+            List<InventoryBase> contents = GetClient().Inventory.FolderContents(folderUUID, GetClient().Self.AgentID, true, true, InventorySortOrder.ByName, TimeSpan.FromSeconds(15));
+            if (contents == null) return Failure("folder empty or not found", [folder]);
+            List<InventoryItem> items = [];
+            foreach (InventoryBase item in contents) if (item is InventoryWearable || item is InventoryObject) items.Add((InventoryItem)item);
+            master.CurrentOutfitFolder.AddToOutfit(items, false);
+            return BasicReply("ok", [folder]);
+        }
+
+        [About("Removes the contents of the given folder from the current outfit")]
+        [ArgHints("folder", "UUID of folder", "UUID")]
+        [CmdTypeDo()]
+        public object RemoveOutfit(string folder)
+        {
+            if (UUID.TryParse(folder, out UUID folderUUID) == false) return Failure("invaild folder uuid", [folder]);
+            List<InventoryBase> contents = GetClient().Inventory.FolderContents(folderUUID, GetClient().Self.AgentID, true, true, InventorySortOrder.ByName, TimeSpan.FromSeconds(15));
+            if (contents == null) return Failure("folder empty or not found", [folder]);
+            List<InventoryItem> items = [];
+            foreach (InventoryBase item in contents) if (item is InventoryWearable || item is InventoryObject) items.Add((InventoryItem)item);
+            master.CurrentOutfitFolder.RemoveFromOutfit(items);
+            return BasicReply("ok", [folder]);
         }
 
         protected InventoryNodeEntry LoadInventoryNode(UUID folder, string name="")
