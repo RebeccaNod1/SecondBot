@@ -522,14 +522,16 @@ namespace SecondBotEvents.Services
                 AddLink(item);
             }
 
-            // Detach all current non-body-part items first to avoid toggling
-            var currentWorn = ContentLinks().Select(RealInventoryItem).Where(i => !IsBodyPart(i)).ToList();
-            if (currentWorn.Count > 0)
-            {
-                GetClient().Appearance.RemoveFromOutfit(currentWorn);
-            }
+            // Re-implementing ReplaceOutfit logic manually to ensure a clean swap without toggling.
+            var wearables = outfit.OfType<InventoryWearable>().ToList();
+            var attachments = outfit.Where(item => item is InventoryAttachment || item is InventoryObject).ToList();
 
-            GetClient().Appearance.ReplaceOutfit(outfit, false);
+            // 1. Replace wearables (this is usually safe and doesn't toggle)
+            GetClient().Appearance.ReplaceOutfit(wearables.Cast<InventoryItem>().ToList());
+
+            // 2. Replace attachments with FirstDetachAll=true and replace=true to prevent toggling
+            GetClient().Appearance.AddAttachments(attachments, true, true);
+
             ThreadPool.QueueUserWorkItem(sync =>
             {
                 Thread.Sleep(2000);
