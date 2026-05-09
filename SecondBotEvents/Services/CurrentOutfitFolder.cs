@@ -522,12 +522,16 @@ namespace SecondBotEvents.Services
                 AddLink(item);
             }
 
-            // Clean swap: Remove everything current, then add everything new.
-            // This ensures proper link folder sync and avoids toggling.
-            var current = ContentLinks().Select(RealInventoryItem).ToList();
-            RemoveFromOutfit(current);
-            
-            AddToOutfit(outfit, false);
+            // Queued swap: Detach everything, wait for SL to settle, then attach new.
+            ThreadPool.QueueUserWorkItem(sync =>
+            {
+                var current = ContentLinks().Select(RealInventoryItem).ToList();
+                RemoveFromOutfit(current);
+                
+                Thread.Sleep(2000); // Wait for SL servers to process detaches
+                
+                AddToOutfit(outfit, false);
+            });
         }
 
         /// <summary>
