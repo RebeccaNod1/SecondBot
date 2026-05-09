@@ -522,21 +522,12 @@ namespace SecondBotEvents.Services
                 AddLink(item);
             }
 
-            // Re-implementing ReplaceOutfit logic manually to ensure a clean swap without toggling.
-            var wearables = outfit.OfType<InventoryWearable>().ToList();
-            var attachments = outfit.Where(item => item is InventoryAttachment || item is InventoryObject).ToList();
-
-            // 1. Replace wearables (this is usually safe and doesn't toggle)
-            GetClient().Appearance.ReplaceOutfit(wearables.Cast<InventoryItem>().ToList());
-
-            // 2. Replace attachments with FirstDetachAll=true and replace=true to prevent toggling
-            GetClient().Appearance.AddAttachments(attachments, true, true);
-
-            ThreadPool.QueueUserWorkItem(sync =>
-            {
-                Thread.Sleep(2000);
-                GetClient().Appearance.RequestSetAppearance(true);
-            });
+            // Clean swap: Remove everything current, then add everything new.
+            // This ensures proper link folder sync and avoids toggling.
+            var current = ContentLinks().Select(RealInventoryItem).ToList();
+            RemoveFromOutfit(current);
+            
+            AddToOutfit(outfit, false);
         }
 
         /// <summary>
