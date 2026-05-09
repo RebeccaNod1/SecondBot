@@ -131,21 +131,42 @@ namespace BetterSecondBot.Static
             {
                 if (contents.Count > 0)
                 {
-                    HashSet<UUID> seen = [];
+                    HashSet<UUID> seenIds = [];
                     foreach (InventoryBase item in contents)
                     {
-                        if (seen.Contains(item.UUID))
+                        if (item is InventoryItem itm)
                         {
-                            continue;
+                            UUID effectiveID = itm.UUID;
+                            // If it's a link, the AssetUUID is the UUID of the item it points to
+                            if (itm.AssetType == AssetType.Link)
+                            {
+                                effectiveID = itm.AssetUUID;
+                            }
+
+                            if (seenIds.Contains(effectiveID))
+                            {
+                                continue;
+                            }
+                            seenIds.Add(effectiveID);
+
+                            mapitem = new InventoryMapItem
+                            {
+                                name = item.Name,
+                                id = item.UUID.ToString(),
+                                typename = item.GetType().Name
+                            };
+                            entrys.Add(mapitem);
                         }
-                        seen.Add(item.UUID);
-                        mapitem = new InventoryMapItem
+                        else if (item is InventoryFolder fold)
                         {
-                            name = item.Name,
-                            id = item.UUID.ToString(),
-                            typename = item.GetType().Name
-                        };
-                        entrys.Add(mapitem);
+                            mapitem = new InventoryMapItem
+                            {
+                                name = fold.Name,
+                                id = fold.UUID.ToString(),
+                                typename = "Folder"
+                            };
+                            entrys.Add(mapitem);
+                        }
                     }
                 }
             }
