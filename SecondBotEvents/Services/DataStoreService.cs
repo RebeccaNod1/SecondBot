@@ -541,7 +541,7 @@ namespace SecondBotEvents.Services
 
         public void BotRecordReplyIM(UUID sessionid,string message)
         {
-            RecordChat(sessionid, "Bot", message);
+            RecordChat(sessionid, "{BOT} " + GetClient().Self.Name, message);
         }
         public void BotRecordLocalchatReply(string message, string typeTag = "")
         {
@@ -1509,7 +1509,14 @@ namespace SecondBotEvents.Services
                         {
                             // group IM
                             OpenChatWindow(true, e.IM.IMSessionID, e.IM.IMSessionID);
-                            RecordChat(e.IM.IMSessionID, e.IM.FromAgentName, e.IM.Message);
+                            if (e.IM.FromAgentID == GetClient().Self.AgentID)
+                            {
+                                RecordChat(e.IM.IMSessionID, "{BOT} " + GetClient().Self.Name, e.IM.Message);
+                            }
+                            else
+                            {
+                                RecordChat(e.IM.IMSessionID, e.IM.FromAgentName, e.IM.Message);
+                            }
                             break;
                         }
                         UUID SessionID = e.IM.IMSessionID;
@@ -1523,6 +1530,10 @@ namespace SecondBotEvents.Services
                         if (e.IM.FromAgentID != GetClient().Self.AgentID)
                         {
                             RecordChat(SessionID, e.IM.FromAgentName, e.IM.Message);
+                        }
+                        else
+                        {
+                            RecordChat(SessionID, "{BOT} " + GetClient().Self.Name, e.IM.Message);
                         }
                         break;
                     }
