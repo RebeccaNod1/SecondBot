@@ -1,4 +1,4 @@
-﻿using OpenMetaverse;
+using OpenMetaverse;
 using OpenMetaverse.ImportExport.Collada14;
 using SecondBotEvents.Services;
 using System;
@@ -131,8 +131,14 @@ namespace BetterSecondBot.Static
             {
                 if (contents.Count > 0)
                 {
+                    HashSet<UUID> seen = [];
                     foreach (InventoryBase item in contents)
                     {
+                        if (seen.Contains(item.UUID))
+                        {
+                            continue;
+                        }
+                        seen.Add(item.UUID);
                         mapitem = new InventoryMapItem
                         {
                             name = item.Name,
