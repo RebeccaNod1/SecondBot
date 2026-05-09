@@ -547,7 +547,8 @@ namespace SecondBotEvents.Services
         {
             lock (localChatHistory)
             {
-                localChatHistory.Add("{BOT} " + typeTag + GetClient().Self.Name + ": " + message);
+                long ms = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                localChatHistory.Add("[" + ms + "] {BOT} " + typeTag + GetClient().Self.Name + ": " + message);
                 if (localChatHistory.Count <= myConfig.GetLocalChatHistoryLimit())
                 {
                     return;
@@ -564,7 +565,8 @@ namespace SecondBotEvents.Services
                 {
                     return; // chat window not open unable to record message
                 }
-                chatWindows[sessionID].Add(fromname + ": " + message);
+                long ms = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                chatWindows[sessionID].Add("[" + ms + "] " + fromname + ": " + message);
                 chatWindowsUnread[sessionID] = true;
                 int purgeLen = myConfig.GetImChatHistoryLimit();
                 if (chatWindowsIsGroup[sessionID] == true)
@@ -1351,7 +1353,8 @@ namespace SecondBotEvents.Services
                                 AddAvatar(e.SourceID, e.FromName);
                             }
 
-                            localChatHistory.Add(source + " " + typeTag + e.FromName + ": " + e.Message);
+                            long ms = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                            localChatHistory.Add("[" + ms + "] " + source + " " + typeTag + e.FromName + ": " + e.Message);
                             if (localChatHistory.Count <= myConfig.GetLocalChatHistoryLimit())
                             {
                                 break;
