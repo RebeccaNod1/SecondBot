@@ -455,7 +455,6 @@ namespace SecondBotEvents.Commands
                 return Failure("Unknown group", [group]);
             }
             GetClient().Self.InstantMessageGroup(groupUUID, message);
-            master.DataStoreService.BotRecordReplyIM(groupUUID, message);
             return BasicReply("Sending");
         }
         [About("fetchs a list of all pending group invitations")]

@@ -228,6 +228,19 @@ namespace SecondBotEvents.Services
             {
                 loginParams.URI = basicCfg.GetLoginURI();
             }
+
+            string customMac = basicCfg.GetMAC();
+            if (!string.IsNullOrEmpty(customMac))
+            {
+                loginParams.MAC = customMac;
+            }
+
+            string customId0 = basicCfg.GetId0();
+            if (!string.IsNullOrEmpty(customId0))
+            {
+                loginParams.ID0 = customId0;
+            }
+
             AutoRestartLoginTimer.Start();
             client.Network.BeginLogin(loginParams);
         }

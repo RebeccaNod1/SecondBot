@@ -32,7 +32,6 @@ namespace SecondBotEvents.Commands
                 return Failure("Invaild channel", [channel, message]);
             }
             string typeTag = (channelnum == 0) ? "" : $"[Channel {channelnum}] ";
-            master.DataStoreService.BotRecordLocalchatReply(message, typeTag);
             GetClient().Self.Chat(message, channelnum, ChatType.Normal);
             return BasicReply("ok");
         }
@@ -53,7 +52,6 @@ namespace SecondBotEvents.Commands
             {
                 return Failure("Invaild channel", [channel, message]);
             }
-            master.DataStoreService.BotRecordLocalchatReply(message, "[Shout] ");
             GetClient().Self.Chat(message, channelnum, ChatType.Shout);
             return BasicReply("ok");
         }
@@ -74,7 +72,6 @@ namespace SecondBotEvents.Commands
             {
                 return Failure("Invaild channel", [channel, message]);
             }
-            master.DataStoreService.BotRecordLocalchatReply(message, "[Whisper] ");
             GetClient().Self.Chat(message, channelnum, ChatType.Whisper);
             return BasicReply("ok");
         }

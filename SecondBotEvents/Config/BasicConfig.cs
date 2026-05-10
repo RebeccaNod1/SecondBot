@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -14,6 +14,8 @@ namespace SecondBotEvents.Config
             settings.Add("LoginURI");
             settings.Add("LogCommands");
             settings.Add("DefaultHoverHeight");
+            settings.Add("MAC");
+            settings.Add("Id0");
         }
 
         public double GetDefaultHoverHeight()
@@ -54,6 +56,16 @@ namespace SecondBotEvents.Config
         public string GetLoginURI()
         {
             return ReadSettingAsString("LoginURI", "secondlife");
+        }
+
+        public string GetMAC()
+        {
+            return ReadSettingAsString("MAC", "");
+        }
+
+        public string GetId0()
+        {
+            return ReadSettingAsString("Id0", "");
         }
     }
 }
