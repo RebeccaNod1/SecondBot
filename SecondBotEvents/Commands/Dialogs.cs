@@ -1,5 +1,7 @@
-﻿using OpenMetaverse;
+using OpenMetaverse;
 using SecondBotEvents.Services;
+using System.Text.Json;
+using System.Collections.Generic;
 
 
 namespace SecondBotEvents.Commands
@@ -84,5 +86,13 @@ namespace SecondBotEvents.Commands
             return BasicReply(master.DialogService.DialogAction(dialogidnum, buttontext));
         }
 
+        [About("Lists all active dialogs currently waiting for a response")]
+        [ReturnHints("A JSON array of active dialogs")]
+        [CmdTypeGet()]
+        public object GetDialogs()
+        {
+            var dialogs = master.DialogService.GetActiveDialogs();
+            return BasicReply(JsonSerializer.Serialize(dialogs, JsonOptions.UnsafeRelaxed));
+        }
     }
 }

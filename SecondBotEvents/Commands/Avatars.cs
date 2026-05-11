@@ -314,11 +314,11 @@ namespace SecondBotEvents.Commands
         [CmdTypeDo()]
         public object Key2Name(string uuid)
         {
-            if (UUID.TryParse(uuid, out _) == false)
+            if (UUID.TryParse(uuid, out UUID parsedUUID) == false)
             {
                 return Failure("Not a vaild UUID");
             }
-            return BasicReply(master.DataStoreService.GetAvatarName(UUID.Zero));
+            return BasicReply(master.DataStoreService.GetAvatarName(parsedUUID));
         }
 
         [About("searchs the AV database if not found triggers a lookup")]

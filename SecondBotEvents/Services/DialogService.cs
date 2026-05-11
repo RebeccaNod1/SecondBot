@@ -1,4 +1,4 @@
-﻿using OpenMetaverse;
+using OpenMetaverse;
 using SecondBotEvents.Config;
 using System;
 using System.Collections.Generic;
@@ -108,6 +108,28 @@ namespace SecondBotEvents.Services
             }
         }
 
+        public List<DialogWindow> GetActiveDialogs()
+        {
+            lock (DialogWindows)
+            {
+                CleanUp();
+                List<DialogWindow> reply = [];
+                foreach (var kvp in DialogWindows)
+                {
+                    var e = kvp.Value;
+                    reply.Add(new DialogWindow
+                    {
+                        buttons = [.. e.ButtonLabels],
+                        dialogid = kvp.Key,
+                        message = e.Message,
+                        objectname = e.ObjectName,
+                        expires = DialogWindowsExpire[kvp.Key]
+                    });
+                }
+                return reply;
+            }
+        }
+
         public string DialogAction(int dialogID, string button)
         {
             lock(DialogWindows)
@@ -141,7 +163,7 @@ namespace SecondBotEvents.Services
                     List<int> removeids = [];
                     foreach(KeyValuePair<int,long> a in DialogWindowsExpire)
                     {
-                        if(a.Value > unixtime)
+                        if(a.Value < unixtime)
                         {
                             removeids.Add(a.Key);
                         }
@@ -240,6 +262,7 @@ namespace SecondBotEvents.Services
             if (GetClient() != null)
             {
                 GetClient().Self.ScriptDialog -= DialogWindowEvent;
+                GetClient().Self.LoadURL -= LoadUrlEvent;
             }
         }
 
@@ -249,6 +272,20 @@ namespace SecondBotEvents.Services
             botConnected = true;
             // attach events
             GetClient().Self.ScriptDialog += DialogWindowEvent;
+            GetClient().Self.LoadURL += LoadUrlEvent;
+        }
+
+        protected void LoadUrlEvent(object sender, LoadUrlEventArgs e)
+        {
+            // We'll relay this as a special chat message so it shows up in the dashboard chat log
+            // In this version of LibOMV, the property is 'URL' (all caps).
+            string address = e.URL;
+            string message = " [SYSTEM] Object '" + e.ObjectName + "' sent a link: " + e.Message + " URL: " + address;
+            
+            // Record it in the bot's local chat history so the dashboard picks it up on the next poll
+            master.DataStoreService.BotRecordLocalchatReply(message, "[SYSTEM] ");
+            
+            LogFormater.Info("[LoadURL] " + e.ObjectName + " sent: " + e.Message + " (" + address + ")");
         }
 
         public override void Start(bool updateEnabled = false, bool setEnabledTo = false)

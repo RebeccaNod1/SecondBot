@@ -200,6 +200,59 @@ namespace SecondBotEvents.Commands
             if (rules == null) return BasicReply("[]");
             return BasicReply(JsonSerializer.Serialize(rules, JsonOptions.UnsafeRelaxed));
         }
+
+        [About("Lists objects near the bot (within 20m)")]
+        [ReturnHints("A JSON array of nearby objects")]
+        [CmdTypeGet()]
+        public object GetNearbyObjects()
+        {
+            if (GetClient().Network.CurrentSim == null) return Failure("Not in a sim");
+            
+            Vector3 botPos = GetClient().Self.SimPosition;
+            uint sittingOn = GetClient().Self.SittingOn;
+            List<uint> localIDsToRequest = [];
+            
+            // First pass: Find objects and collect localIDs for properties we don't have
+            foreach (var prim in GetClient().Network.CurrentSim.ObjectsPrimitives.Values)
+            {
+                if (prim.ParentID != 0) continue;
+                if (Vector3.Distance(botPos, prim.Position) <= 20.0f)
+                {
+                    if (prim.Properties == null) localIDsToRequest.Add(prim.LocalID);
+                }
+            }
+
+            // If we have missing names, request them and wait a short moment
+            if (localIDsToRequest.Count > 0)
+            {
+                GetClient().Objects.SelectObjects(GetClient().Network.CurrentSim, localIDsToRequest.ToArray());
+                Thread.Sleep(500); // Wait for properties to arrive
+            }
+
+            List<object> reply = [];
+            foreach (var prim in GetClient().Network.CurrentSim.ObjectsPrimitives.Values)
+            {
+                if (prim.ParentID != 0) continue;
+                
+                float dist = Vector3.Distance(botPos, prim.Position);
+                if (dist <= 20.0f)
+                {
+                    string name = prim.Properties?.Name;
+                    if (string.IsNullOrEmpty(name)) name = "Object #" + prim.LocalID;
+                    
+                    reply.Add(new {
+                        name = name,
+                        uuid = prim.ID.ToString(),
+                        local_id = prim.LocalID,
+                        dist = Math.Round(dist, 1),
+                        pos = prim.Position.ToString(),
+                        is_sitting = (prim.LocalID == sittingOn)
+                    });
+                }
+            }
+            
+            return BasicReply(JsonSerializer.Serialize(reply, JsonOptions.UnsafeRelaxed));
+        }
     }
 
     public class SculptysInfo
